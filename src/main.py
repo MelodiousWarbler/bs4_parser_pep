@@ -7,7 +7,7 @@ from bs4 import BeautifulSoup
 from tqdm import tqdm
 
 from configs import configure_argument_parser, configure_logging
-from constants import BASE_DIR, MAIN_DOC_URL
+from constants import BASE_DIR, MAIN_DOC_URL, PEP_URL, EXPECTED_STATUS
 from outputs import control_output
 from utils import get_response, find_tag
 
@@ -21,7 +21,7 @@ def whats_new(session):
     main_div = find_tag(soup, 'section', attrs={'id': 'what-s-new-in-python'})
     div_with_ul = find_tag(main_div, 'div', attrs={'class': 'toctree-wrapper'})
     sections_by_python = div_with_ul.find_all('li', attrs={'class': 'toctree-l1'})
-    results = [('Ссылка на статью', 'Заголовок', 'Редактор, автор')]
+    results = [('Ссылка на статью', 'Заголовок', 'Редактор, Автор')]
     for section in tqdm(sections_by_python):
         version_a_tag = section.find('a')
         href = version_a_tag['href']
@@ -36,8 +36,6 @@ def whats_new(session):
         results.append(
             (version_link, h1.text, dl_text)
         )
-    # for row in results:
-    #     print(*row)
     return results
 
 def latest_versions(session):
@@ -65,8 +63,7 @@ def latest_versions(session):
         results.append(
             (link, version, status)
         )
-    # for row in results:
-    #     print(*row)
+
     return results
 
 def download(session):
@@ -80,7 +77,7 @@ def download(session):
     pdf_a4_tag = find_tag(
         table_tag,
         'a',
-        {'href': re.compile(r'.+pdf-a4\.zip$')}
+        attrs={'href': re.compile(r'.+pdf-a4\.zip$')}
     )
     pdf_a4_link = pdf_a4_tag['href']
     archive_url = urljoin(downloads_url, pdf_a4_link)
@@ -94,10 +91,56 @@ def download(session):
         file.write(response.content)
     logging.info(f'Архив был загружен и сохранён: {archive_path}')
 
+
+def pep(session):
+    response = get_response(session, PEP_URL)
+    if response is None:
+        return None
+    soup = BeautifulSoup(response.text, 'lxml')
+    section_tag = find_tag(soup, 'section', attrs={'id': 'numerical-index'})
+    tbody_tag = find_tag(section_tag, 'tbody')
+    tr_tags = tbody_tag.find_all('tr')
+    status_sum = {}
+    total_peps = 0
+    results = [('Статус', 'Количество')]
+    for tr_tag in tr_tags:
+        td_tag = find_tag(tr_tag, 'td')
+        preview_status = td_tag.text[1:]
+        a_tag = find_tag(tr_tag, 'a')
+        href = a_tag['href']
+        link = urljoin(PEP_URL, href)
+        response = get_response(session, link)
+        if response is None:
+            return None
+        soup = BeautifulSoup(response.text, 'lxml')
+        dt_tags = soup.find_all('dt')
+        for dt_tag in dt_tags:
+            if dt_tag.text == 'Status:':
+                total_peps += 1
+                status = dt_tag.find_next_sibling().string
+                if status in status_sum:
+                    status_sum[status] += 1
+                if status not in status_sum:
+                    status_sum[status] = 1
+                if status not in EXPECTED_STATUS[preview_status]:
+                    error_msg = (
+                        'Несовпадающие статусы:\n'
+                        f'{link}\n'
+                        f'Статус в картрочке {status}\n'
+                        f'Ожидаемые статусы: {EXPECTED_STATUS[preview_status]}'
+                    )
+                    logging.warning(error_msg)
+    for status in status_sum:
+        results.append((status, status_sum[status]))
+    results.append(('Total', total_peps))
+    return results
+
+
 MODE_TO_FUNCTION = {
     'whats-new': whats_new,
     'latest-versions': latest_versions,
     'download': download,
+    'pep': pep
 }
 
 def main():
@@ -117,7 +160,7 @@ def main():
 
     if results is not None:
         control_output(results, args)
-    logging.info('Парсер завершил работу.') 
+    logging.info('Парсер завершил работу.')
 
 if __name__ == '__main__':
     main()
