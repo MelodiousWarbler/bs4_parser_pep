@@ -20,7 +20,10 @@ def whats_new(session):
     soup = BeautifulSoup(response.text, features='lxml')
     main_div = find_tag(soup, 'section', attrs={'id': 'what-s-new-in-python'})
     div_with_ul = find_tag(main_div, 'div', attrs={'class': 'toctree-wrapper'})
-    sections_by_python = div_with_ul.find_all('li', attrs={'class': 'toctree-l1'})
+    sections_by_python = div_with_ul.find_all(
+        'li',
+        attrs={'class': 'toctree-l1'}
+    )
     results = [('Ссылка на статью', 'Заголовок', 'Редактор, Автор')]
     for section in tqdm(sections_by_python):
         version_a_tag = section.find('a')
@@ -37,6 +40,7 @@ def whats_new(session):
             (version_link, h1.text, dl_text)
         )
     return results
+
 
 def latest_versions(session):
     response = get_response(session, MAIN_DOC_URL)
@@ -63,8 +67,8 @@ def latest_versions(session):
         results.append(
             (link, version, status)
         )
-
     return results
+
 
 def download(session):
     downloads_url = urljoin(MAIN_DOC_URL, 'download.html')
@@ -143,6 +147,7 @@ MODE_TO_FUNCTION = {
     'pep': pep
 }
 
+
 def main():
     configure_logging()
     logging.info('Парсер запущен!')
@@ -161,6 +166,7 @@ def main():
     if results is not None:
         control_output(results, args)
     logging.info('Парсер завершил работу.')
+
 
 if __name__ == '__main__':
     main()

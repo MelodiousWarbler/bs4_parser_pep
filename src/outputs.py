@@ -21,9 +21,11 @@ def control_output(results, cli_args):
         # Вывод данных по умолчанию — в терминал построчно.
         default_output(results)
 
+
 def default_output(results):
     for row in results:
         print(*row)
+
 
 def pretty_output(results):
     table = PrettyTable()
@@ -34,6 +36,7 @@ def pretty_output(results):
     # Добавляем все строки, начиная со второй (с индексом 1).
     table.add_rows(results[1:])
     print(table)
+
 
 def file_output(results, cli_args):
     results_dir = BASE_DIR / 'results'
