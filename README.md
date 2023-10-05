@@ -7,6 +7,11 @@
 
 Парсер включает в себя кеширование результатов запроса.
 
+## Применяемые технологии
+
+[![Python](https://img.shields.io/badge/Python-3.7-blue?style=flat-square&logo=Python&logoColor=3776AB&labelColor=d0d0d0)](https://www.python.org/)
+[![Beautiful Soup 4](https://img.shields.io/badge/BeautifulSoup-4.9.3-blue?style=flat-square&labelColor=d0d0d0)](https://beautiful-soup-4.readthedocs.io)
+
 ### Подготовка к использованию
 - Установите и активируйте виртуальное окружение
 - Установите зависимости из файла requirements.txt
@@ -28,3 +33,7 @@
 
 Вызов справки по аргументам командной строки:
 `python main.py --help`
+
+## Автор
+Яков Плакотнюк
+https://github.com/MelodiousWarbler
