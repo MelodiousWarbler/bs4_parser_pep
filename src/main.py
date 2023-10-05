@@ -4,7 +4,6 @@ from collections import defaultdict
 from urllib.parse import urljoin
 
 import requests_cache
-from bs4 import BeautifulSoup
 from tqdm import tqdm
 
 from configs import configure_argument_parser, configure_logging
@@ -12,11 +11,14 @@ from constants import (
     BASE_DIR, DOWNLOADS_DIR_NAME, MAIN_DOC_URL, PEP_URL, EXPECTED_STATUS
 )
 from outputs import control_output
-from utils import get_response, find_tag
+from utils import get_response, find_tag, make_soup
 
 PROGRAM_MALFUNCTION = 'Сбой в работе программы: {error}'
 CAMMAND_ARGS = 'Аргументы командной строки: {args}'
 ARCHIVE_SAVE = 'Архив был загружен и сохранён: {archive_path}'
+CONNECT_ERR = 'Не удалось подключиться {error} {pep_link}'
+PARSER_RUN = 'Парсер запущен!'
+PARSER_END = 'Парсер завершил работу.'
 
 STATUS_PEP_NOT_FOUND = (
     'Несовпадающие статусы: '
@@ -26,43 +28,42 @@ STATUS_PEP_NOT_FOUND = (
 )
 
 
-def make_soup(session, url):
-    return BeautifulSoup(get_response(session, url).text, features='lxml')
-
-
 def whats_new(session):
     whats_new_url = urljoin(MAIN_DOC_URL, 'whatsnew/')
-    response = get_response(session, whats_new_url)
-    if response is None:
-        return
-    soup = make_soup(session, whats_new_url)
-    main_div = find_tag(soup, 'section', attrs={'id': 'what-s-new-in-python'})
-    div_with_ul = find_tag(main_div, 'div', attrs={'class': 'toctree-wrapper'})
-    sections_by_python = div_with_ul.find_all(
-        'li',
-        attrs={'class': 'toctree-l1'}
-    )
     results = [('Ссылка на статью', 'Заголовок', 'Редактор, Автор')]
-    for section in tqdm(sections_by_python):
+    logs = []
+    for section in tqdm(
+        find_tag(
+            find_tag(
+                make_soup(session, whats_new_url),
+                'section',
+                attrs={'id': 'what-s-new-in-python'}
+            ),
+            'div', attrs={'class': 'toctree-wrapper'}
+        ).find_all(
+            'li',
+            attrs={'class': 'toctree-l1'}
+        )
+    ):
         version_a_tag = section.find('a')
         href = version_a_tag['href']
         version_link = urljoin(whats_new_url, href)
-        response = get_response(session, version_link)
-        if response is None:
+        try:
+            soup = make_soup(session, version_link)
+        except ConnectionError as error:
+            logs.append(CONNECT_ERR.format(error=error, pep_link=version_link))
             continue
-        soup = make_soup(session, version_link)
         results.append((
             version_link,
             find_tag(soup, 'h1').text,
             find_tag(soup, 'dl').text.replace('\n', ' ')
         ))
+    for log in logs:
+        logging.info(log)
     return results
 
 
 def latest_versions(session):
-    response = get_response(session, MAIN_DOC_URL)
-    if response is None:
-        return
     soup = make_soup(session, MAIN_DOC_URL)
     sidebar = find_tag(soup, 'div', {'class': 'sphinxsidebarwrapper'})
     ul_tags = sidebar.find_all('ul')
@@ -71,7 +72,7 @@ def latest_versions(session):
             a_tags = ul.find_all('a')
             break
     else:
-        raise KeyError('Ничего не нашлось')
+        raise LookupError('Ничего не нашлось')
     results = [('Ссылка на документацию', 'Версия', 'Статус')]
     pattern = r'Python (?P<version>\d\.\d+) \((?P<status>.*)\)'
     for a_tag in a_tags:
@@ -88,9 +89,6 @@ def latest_versions(session):
 
 def download(session):
     downloads_url = urljoin(MAIN_DOC_URL, 'download.html')
-    response = get_response(session, downloads_url)
-    if response is None:
-        return
     soup = make_soup(session, downloads_url)
     main_tag = find_tag(soup, 'div', {'role': 'main'})
     table_tag = find_tag(main_tag, 'table', {'class': 'docutils'})
@@ -125,11 +123,11 @@ def pep(session):
             tr_tag.select_one('td a.pep.reference.internal')['href']
         )
         try:
-            pep_soup = make_soup(session, pep_link)
+            soup = make_soup(session, pep_link)
         except ConnectionError as error:
-            logs.append(error)
+            logs.append(CONNECT_ERR.format(error=error, pep_link=pep_link))
             continue
-        dt_tags = pep_soup.select_one('dl.rfc2822.field-list.simple').select(
+        dt_tags = soup.select_one('dl.rfc2822.field-list.simple').select(
             'dt'
         )
         for dt_tag in dt_tags:
@@ -168,8 +166,7 @@ MODE_TO_FUNCTION = {
 
 def main():
     configure_logging()
-    logging.info('Парсер запущен!')
-
+    logging.info(PARSER_RUN)
     arg_parser = configure_argument_parser(MODE_TO_FUNCTION.keys())
     args = arg_parser.parse_args()
     logging.info(CAMMAND_ARGS.format(args=args))
@@ -185,7 +182,7 @@ def main():
             PROGRAM_MALFUNCTION.format(error=error),
             stack_info=True
         )
-    logging.info('Парсер завершил работу.')
+    logging.info(PARSER_END)
 
 
 if __name__ == '__main__':

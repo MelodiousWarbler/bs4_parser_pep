@@ -35,5 +35,4 @@
 `python main.py --help`
 
 ## Автор
-Яков Плакотнюк
-https://github.com/MelodiousWarbler
+- [Яков Плакотнюк](https://github.com/MelodiousWarbler "GitHub аккаунт")
