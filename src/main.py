@@ -8,7 +8,9 @@ from bs4 import BeautifulSoup
 from tqdm import tqdm
 
 from configs import configure_argument_parser, configure_logging
-from constants import BASE_DIR, DOWNLOADS_DIR_NAME, MAIN_DOC_URL, PEP_URL, EXPECTED_STATUS
+from constants import (
+    BASE_DIR, DOWNLOADS_DIR_NAME, MAIN_DOC_URL, PEP_URL, EXPECTED_STATUS
+)
 from outputs import control_output
 from utils import get_response, find_tag
 
@@ -154,6 +156,7 @@ def pep(session):
         *count_statuses.items(),
         ('Total', sum(count_statuses.values())),
     ]
+
 
 MODE_TO_FUNCTION = {
     'whats-new': whats_new,
