@@ -6,10 +6,6 @@ RESPONSE_ERROR = 'Возникла ошибка при загрузке стра
 ERROR_MESSAGE = 'Не найден тег {tag} {attrs}'
 
 
-def make_soup(session, url, features='lxml'):
-    return BeautifulSoup(get_response(session, url).text, features=features)
-
-
 def get_response(session, url, encoding='utf-8'):
     try:
         response = session.get(url)
@@ -27,3 +23,7 @@ def find_tag(soup, tag, attrs=None):
             ERROR_MESSAGE.format(tag=tag, attrs=attrs)
         )
     return searched_tag
+
+
+def make_soup(session, url, features='lxml'):
+    return BeautifulSoup(get_response(session, url).text, features=features)

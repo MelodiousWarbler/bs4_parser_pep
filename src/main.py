@@ -11,7 +11,7 @@ from constants import (
     BASE_DIR, DOWNLOADS_DIR_NAME, MAIN_DOC_URL, PEP_URL, EXPECTED_STATUS
 )
 from outputs import control_output
-from utils import get_response, find_tag, make_soup
+from utils import find_tag, make_soup
 
 PROGRAM_MALFUNCTION = 'Сбой в работе программы: {error}'
 CAMMAND_ARGS = 'Аргументы командной строки: {args}'
